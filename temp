@@ -1,0 +1,99 @@
+
+tutorialspoint
+
+    The C Standard Library
+    C Library - Home
+    C Library - <assert.h>
+    C Library - <ctype.h>
+    C Library - <errno.h>
+    C Library - <float.h>
+    C Library - <limits.h>
+    C Library - <locale.h>
+    C Library - <math.h>
+    C Library - <setjmp.h>
+    C Library - <signal.h>
+    C Library - <stdarg.h>
+    C Library - <stddef.h>
+    C Library - <stdio.h>
+    C Library - <stdlib.h>
+    C Library - <string.h>
+    C Library - <time.h>
+
+    C Standard Library Resources
+    C Library - Quick Guide
+    C Library - Useful Resources
+    C Library - Discussion
+
+    C Programming Resources
+    C Programming - Tutorial
+    C - Useful Resources
+
+C library function - fgetc()
+Advertisements
+Previous Page
+Next Page  
+Description
+
+The C library function int fgetc(FILE *stream) gets the next character (an unsigned char) from the specified stream and advances the position indicator for the stream.
+Declaration
+
+Following is the declaration for fgetc() function.
+
+int fgetc(FILE *stream)
+
+Parameters
+
+    stream -- This is the pointer to a FILE object that identifies the stream on which the operation is to be performed.
+
+Return Value
+
+This function returns the character read as an unsigned char cast to an int or EOF on end of file or error.
+Example
+
+The following example shows the usage of fgetc() function.
+
+#include <stdio.h>
+
+int main ()
+{
+   FILE *fp;
+   int c;
+   int n = 0;
+  
+   fp = fopen("file.txt","r");
+   if(fp == NULL) 
+   {
+      perror("Error in opening file");
+      return(-1);
+   }
+   do
+   {
+      c = fgetc(fp);
+      if( feof(fp) )
+      {
+         break ;
+      }
+      printf("%c", c);
+   }while(1);
+
+   fclose(fp);
+   return(0);
+}
+
+Let us assume, we have a text file file.txt, which has the following content. This file will be used as an input for our example program:
+
+We are in 2012
+
+Now, let us compile and run the above program that will produce the following result:
+
+We are in 2012
+
+Previous Page
+Next Page  
+Advertisements
+Tutorials Point
+
+    Write for us FAQ's Helping Contact 
+
+© Copyright 2015. All Rights Reserved.
+
