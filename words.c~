@@ -49,7 +49,7 @@ dict_t * make_dict(char *word)
 
 void insert_word( dict_t *firstDic, char *word, so_t *share) 
 {
-  printf("5a\n");
+  printf("6a\n");
   //   Insert word into dict or increment count if already there
   //   return pointer to the updated dict
   
@@ -57,8 +57,10 @@ void insert_word( dict_t *firstDic, char *word, so_t *share)
   dict_t *prevDic = NULL;		// prior to insertion point 
   dict_t *dic = firstDic;		// following insertion point
   // Search down list to find if present or point of insertion
+  printf("6b\n");
   while(dic && ( strcmp(word, dic->word ) >= 0) )// 
   { 
+  	printf("6d\n");
     if( strcmp( word, dic->word ) == 0 ) 
     { 
       dic->cnt++;		// increment count 
@@ -67,14 +69,16 @@ void insert_word( dict_t *firstDic, char *word, so_t *share)
     prevDic = dic;			// advance ptr pair
     dic = dic->next;
   }
-  
+  printf("6e\n");
   while(share->dictionaryBusy)
   {
 	  pthread_yield();
   }
+  printf("6f\n");
   share->dictionaryBusy=true;
   newDic = make_dict(word);		// not found, make entry 
   newDic->next = dic;		// entry bigger than word or tail 
+  printf("6g\n");
   if (prevDic) //is not NULL... i.e. there exists at least 1 element ahead of the new item (while loop was entered)
   {
     prevDic->next = newDic;
@@ -82,7 +86,7 @@ void insert_word( dict_t *firstDic, char *word, so_t *share)
   }
   //return newDic;
   share->dictionaryBusy=false;
-  printf("5b\n");
+  printf("6h\n");
 }
 
 void print_dict(dict_t *d) {
@@ -99,9 +103,11 @@ char * get_word( char *buf, FILE *infile)
   int c;  
   while( (c = fgetc(infile)) != EOF ) 
   {
+  	printf("5b\n");
     if (inword && !isalpha(c)) 
     {
       buf[inword] = '\0';	// terminate the word string
+      printf("5c\n");
       return buf;
     } 
     if (isalpha(c)) 
@@ -109,7 +115,7 @@ char * get_word( char *buf, FILE *infile)
       buf[inword++] = c;
     }
   }
-  printf("5b\n");
+  printf("5d\n");
   return NULL;			// no more words
 }
 
@@ -129,17 +135,21 @@ void *consumer(void *arg)
 			char *word=share->charQueueHead->word;
 			share->charQueueHead=share->charQueueHead->next;
 			share->queueBusy=false;
+			printf("4b\n");
 			insert_word(share->charQueueHead, share->wordBuf,share);
-			
+			printf("4c\n");
+			printf("#####################\n%d\n#####################\n",share->dictionaryBusy);
 			while(share->dictionaryBusy)
 			{
+				printf("insideLoop\n");
 				pthread_yield();
 			}
 			
 			//must now be added to the Dictionary
 		}
+		printf("4e\n");
 	}
-	printf("4b\n");
+	printf("4d\n");
 	share->consDone=true;
 }
 
@@ -153,14 +163,17 @@ void *producer(void *arg)
 	while( word=get_word(share->wordBuf,share->infile) ) 
   {
   	printf("3b\n");
-		if(!share->charQueueHead->word)//if there is nothing in the queue
+  	printf("**********************\n%s\n**********************\n",share->charQueueHead->word);
+		if(!(share->charQueueHead->word))//if there is nothing in the queue
 		{
+			printf("3e\n");
 			share->charQueueHead->word=word;
 			share->charQueueHead->next=NULL;
 			//printf("\n**********************\n");
 		}
 		else
 		{
+			printf("3f\n");
 			charQueue_t *curr=share->charQueueHead;
 			while(curr->next)//end of queue
 			{
@@ -172,6 +185,7 @@ void *producer(void *arg)
 			curr->next=next;
 			//printf("\nNONONONONONONONONONON\n");
 		}
+		//printQueue(share->charQueueHead);
 		printf("3c\n");
 	}
   share->prodDone=true;
@@ -179,8 +193,19 @@ void *producer(void *arg)
   {
   	pthread_yield();
   }
-  print_dict(firstWord);
+  //print_dict(firstWord);
   printf("3d\n");
+}
+
+void printQueue(charQueue_t *first)
+{
+	int i=0;
+	while(first)
+	{
+		printf("%i)%s\n",i,first->word);
+		first=first->next;
+		i++;
+	}
 }
 
 
@@ -196,6 +221,7 @@ void words( FILE *infile )
 	share->queueBusy=false;
 	share->dictionaryBusy=false;
 	share->charQueueHead->word=NULL;
+	share->charQueueHead->next=NULL;
 	share->wordBuf=wordbuf;
 	share->prodDone=false;
 	share->consDone=false;
@@ -205,8 +231,10 @@ void words( FILE *infile )
 	void *ret;
 	if( (status = pthread_create(&prod,NULL,producer,(void*)share)) != 0 )
     printf("create producer thread\n" );
-	if( (status=pthread_create(&cons,NULL,consumer,(void*)share)) !=0 )
-		printf("create consumer thread\n");
+	/*if( (status=pthread_create(&cons,NULL,consumer,(void*)share)) !=0 )
+		printf("create consumer thread\n");*/
+		
+		
 	if( (status = pthread_join( prod, &ret )) != 0)
     printf("join producer thread\n" );
 	
