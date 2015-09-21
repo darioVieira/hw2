@@ -14,10 +14,8 @@ typedef struct dict{//can either declare a new instance as dict_T name; OR struc
 typedef struct sharedObj
 {
 	int threadCnt;
-	bool *thread1FlagGet;
-	bool *thread2FlagGet;
-	bool *thread1FlagInsert;
-	bool *thread2FlagInsert;
+	bool *getFlag;
+	bool *insertFlag;
 	dict_t *firstDict;
 	FILE *inFile;
 	char *wordBuf;
@@ -102,22 +100,23 @@ words( FILE *infile )
   pthread_t thread1;
   pthread_t thread2;
   
-  void *ret;
+  void *ret1,*ret2;
   so_t *share=malloc(sizeof(so_t));
   
   share->inFile=infile;
-  share->thread1FlagGet=false;
-  share->thread2FlagGet=false;
-  share->thread1FlagInsert=false;
-  share->thread2FlagInsert=false;
+  share->getFlag=false;
+  share->insertFlag=false;
   share->wordBuf=wordbuf;
   share->firstDict=wd;
   share->threadCnt=1;
-  
+  printf("here\n");
   pthread_create(&thread1,NULL,threadMethod,(void*) share);
-  //pthread_create(&thread2,NULL,threadMethod,(void*) share);
-  pthread_join(thread1,&ret);
-  dict_t *finalRet = (dict_t*)ret;
+  printf("here\n");
+  pthread_create(&thread2,NULL,threadMethod,(void*) share);
+  printf("here\n");
+  pthread_join(thread1,&ret1);
+  pthread_join(thread2,&ret2);
+  dict_t *finalRet = (dict_t*)ret1;
   
   /*while( get_word( wordbuf, MAXWORD, infile ) ) 
   {
@@ -132,53 +131,25 @@ void *threadMethod(void * arg)
 {
 	so_t *share=(so_t *)arg;
 	int threadNum=share->threadCnt++;
-	if(threadNum==1)
-	{
-		while(share->thread2FlagGet==true){}
-		share->thread1FlagGet=true;
+	printf("here\n");
+	while(share->getFlag==true){
+		printf("%i,",threadNum);
 	}
-	else if(threadNum==2)
-	{
-		while(share->thread1FlagGet==true){}
-		share->thread2FlagGet=true;
-	}
-	
+	share->getFlag=true;
 	
 	while( get_word( share->wordBuf, MAXWORD, share->inFile ) ) 
   {
-  	if(threadNum==1)
-  	{
-			share->thread1FlagGet=false;
-			while(share->thread2FlagInsert==true){}
-			share->thread1FlagInsert=true;
-		}
-		else if(threadNum==2)
-		{
-			share->thread2FlagGet=false;
-			while(share->thread1FlagInsert==true){}
-			share->thread2FlagInsert=true;
-		}
+		share->getFlag=false;
+		while(share->insertFlag==true){}
+		share->insertFlag=true;
 		
-			
     share->firstDict = insert_word(share->firstDict, share->wordBuf); // add to dict
-    //printf("inside while:%s\n",wordbuf);
     
-    if(threadNum==1)
-		{
-			share->thread1FlagInsert=false;
-			while(share->thread2FlagGet==true){}
-			//printf("1true\n");
-			share->thread1FlagGet=true;
-		}
-		else if(threadNum==2)
-		{
-			share->thread2FlagInsert=false;
-			while(share->thread1FlagGet==true){}
-			//printf("2true\n");
-			share->thread2FlagGet=true;
-		}
+		share->insertFlag=false;
+		while(share->getFlag==true){}
+		share->getFlag=true;
 		
-  }
+  }	
   return share->firstDict;
 }
 
