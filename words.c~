@@ -96,28 +96,27 @@ void print_dict(dict_t *d) {
   }
 }
 
-char * get_word(FILE *infile) 
+void get_word(char* wordBuf, FILE *infile) 
 {
-	char *buf;
 	printf("5a\n");
   int inword = 0;
   int c;  
   while( (c = fgetc(infile)) != EOF ) 
   {
-  	printf("5b\n");
+  	printf("5b-%c\n",c);
     if (inword && !isalpha(c)) 
     {
-      buf[inword] = '\0';	// terminate the word string
-      printf("5c-%s\n",buf);
-      return buf;
+      wordBuf[inword] = '\0';	// terminate the word string
+      printf("5c-%s\n",wordBuf);
+      return;
     } 
     if (isalpha(c)) 
     {
-      buf[inword++] = c;
+      wordBuf[inword++] = c;
     }
   }
   printf("5d\n");
-  return NULL;			// no more words
+  return;			// no more words
 }
 
 void *consumer(void *arg)
@@ -148,6 +147,7 @@ void *consumer(void *arg)
 			
 			//must now be added to the Dictionary
 		}
+		share->wordBuf=malloc(sizeof(char*));
 		printf("4e\n");
 	}
 	printf("4d\n");
@@ -158,14 +158,16 @@ void *producer(void *arg)
 {
 	printf("3a\n");
 	so_t* share = (so_t*) arg;
-	
 	char *newWord;
+	
 	while( newWord ) 
   {
-  
+  	
   	printf("3b%s\n",share->charQueueHead->word);
-  	newWord=get_word(share->infile);
-  	//printf("3b-%s\n",share->charQueueHead->word);
+  	get_word(share->wordBuf,share->infile);
+  	char *newWord;
+  	strcpy(newWord,share->wordBuf);
+  	//printf("3b-%s\n",share->wordBuf);
   	
   	
 		if((share->charQueueHead->word)==NULL)//if there is nothing in the queue
@@ -178,14 +180,9 @@ void *producer(void *arg)
 		}
 		else
 		{
-		
-		
-		
-		
-		
 			printf("3f-%s\n",share->charQueueHead->word);
 			charQueue_t *curr=share->charQueueHead;
-			while(curr->next!=NULL)//end of queue
+			while(curr!=NULL)//end of queue
 			{
 				curr=curr->next;
 			}
@@ -195,12 +192,8 @@ void *producer(void *arg)
 			printf("here\n");
 			printf("&&&&&&&&&&&&&&&&&&&&&&&&&&&&\n%s\n&&&&&&&&&&&&&&&&&&&&&&&&&&&&\n",newWord);
 			nextEntry->next=NULL;
-			curr->next=nextEntry;
+			curr=nextEntry;
 			//printf("\nNONONONONONONONONONON\n");
-			
-			
-			
-			
 		}
 		printQueue(share->charQueueHead);
 		char blah=getchar();
@@ -218,10 +211,11 @@ void *producer(void *arg)
 void printQueue(charQueue_t *first)
 {
 	int i=0;
-	while(first && i<10)
+	charQueue_t *curr=first;
+	while(curr)
 	{
 		printf("%i)%s\n",i,first->word);
-		first=first->next;
+		curr=curr->next;
 		i++;
 	}
 }
