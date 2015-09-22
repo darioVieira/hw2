@@ -5,23 +5,32 @@
 #include <pthread.h>
 #include <stdbool.h>
 
+void *producer(void *arg);
+void *consumer(void *arg);
+
 typedef struct dict{//can either declare a new instance as dict_T name; OR struct dict name;
   char *word;
   int count;
   struct dict *next;
 } dict_t;
 
+typedef struct wordLink
+{
+	char* word;
+	struct wordLink *next;
+	struct wordLink *prev
+} wordLink;
+
 typedef struct sharedObj
 {
-	int threadCnt;
-	bool *getFlag;
-	bool *insertFlag;
+	wordLink *wordLinkHead;
+	wordLink *wordLinkTail;
+	bool flag;
+	bool eof;
 	dict_t *firstDict;
 	FILE *inFile;
-	char *wordBuf;
+	pthread_mutex_t wordsLock;
 } so_t;
-
-void *threadMethod(void* arg);
 
 char *
 make_word( char *word ) {
@@ -46,9 +55,11 @@ insert_word( dict_t *d, char *word ) {
   dict_t *nd;
   dict_t *pd = NULL;		// prior to insertion point 
   dict_t *di = d;		// following insertion point
+  printf("4a-%i\n",strcmp(word, di->word ));
   // Search down list to find if present or point of insertion
   while(di && ( strcmp(word, di->word ) >= 0) ) 
   { 
+  	printf("4f\n");
     if( strcmp( word, di->word ) == 0 ) 
     { 
       di->count++;		// increment count 
@@ -57,13 +68,17 @@ insert_word( dict_t *d, char *word ) {
     pd = di;			// advance ptr pair
     di = di->next;
   }
+  printf("4b\n");
   nd = make_dict(word);		// not found, make entry 
+  printf("4c\n");
   nd->next = di;		// entry bigger than word or tail 
   if (pd) 
   {
+  	printf("4d\n");
     pd->next = nd;
     return d;			// insert beond head 
   }
+  printf("4e\n");
   return nd;
 }
 
@@ -92,64 +107,16 @@ get_word( char *buf, int n, FILE *infile) {
 
 #define MAXWORD 1024
 dict_t *
-words( FILE *infile ) 
-{
+words( FILE *infile ) {
   dict_t *wd = NULL;
   char wordbuf[MAXWORD];
-  
-  pthread_t thread1;
-  pthread_t thread2;
-  
-  void *ret;
-  so_t *share=malloc(sizeof(so_t));
-  
-  share->inFile=infile;
-  share->getFlag=false;
-  share->insertFlag=false;
-  share->wordBuf=wordbuf;
-  share->firstDict=wd;
-  share->threadCnt=1;
-  printf("here\n");
-  pthread_create(&thread1,NULL,threadMethod,(void*) share);
-  printf("here\n");
-  pthread_create(&thread2,NULL,threadMethod,(void*) share);
-  printf("here\n");
-  pthread_join(thread1,&ret);
-  dict_t *finalRet = (dict_t*)ret;
-  
-  /*while( get_word( wordbuf, MAXWORD, infile ) ) 
+  while( get_word( wordbuf, MAXWORD, infile ) ) 
   {
   	
     wd = insert_word(wd, wordbuf); // add to dict
     printf("inside while:%s\n",wordbuf);
-  }*/
-  return finalRet;
-}
-
-void *threadMethod(void * arg)
-{
-	so_t *share=(so_t *)arg;
-	int threadNum=share->threadCnt++;
-	printf("here\n");
-	while(share->getFlag==true){
-		printf("%i,",threadNum);
-	}
-	share->getFlag=true;
-	
-	while( get_word( share->wordBuf, MAXWORD, share->inFile ) ) 
-  {
-		share->getFlag=false;
-		while(share->insertFlag==true){}
-		share->insertFlag=true;
-		
-    share->firstDict = insert_word(share->firstDict, share->wordBuf); // add to dict
-    
-		share->insertFlag=false;
-		while(share->getFlag==true){}
-		share->getFlag=true;
-		
-  }	
-  return share->firstDict;
+  }
+  return wd;
 }
 
 int
@@ -165,28 +132,85 @@ main( int argc, char *argv[] )
     exit( EXIT_FAILURE );
   }
   
-  d = words( infile );
-  print_dict( d );
+  pthread_t prod;
+  pthread_t cons;
+  void *ret;
+  so_t *share=malloc(sizeof(so_t));
+  share->inFile=infile;
+  share->flag=false;
+  printf("here1\n");
+  share->wordLinkHead=malloc(sizeof(wordLink));
+  share->wordLinkHead->next=NULL;
+  printf("here2\n");
+  share->wordLinkHead->word=NULL;
+  printf("here3\n");
+  share->wordLinkHead->prev=NULL;
+  printf("here4\n");
+  share->wordLinkTail=share->wordLinkHead;
+  share->firstDict=malloc(sizeof(dict_t));
+  share->firstDict->word=NULL;
+  share->eof=false;
+  
+  printf("1a\n");
+  pthread_create(&prod,NULL,producer,(void*) share);
+  //pthread_create(&cons,NULL,consumer,(void*) share);
+  printf("1b\n");
+  pthread_join(prod,&ret);
+  printf("1c\n");
+  //d = words( infile );
+  //print_dict( d );
   fclose( infile );
 }
 
+void *producer(void * arg)//stores word in shared obj
+{
+	so_t *share=(so_t *)arg;
+	char wordbuf[MAXWORD];
+	int cnt=0;
+	wordLink *temp=malloc(sizeof(wordLink));
+	while(get_word( wordbuf, MAXWORD, share->inFile ) ) 
+  {
+  	realloc(temp);
+		//printf("tempLoc-%i\n",&temp->word);
+		temp->word=wordbuf;
+		temp->next=share->wordLinkHead;
+		temp->prev=NULL;
+		share->wordLinkHead->prev=temp;
+		share->wordLinkHead = temp;
+		wordLink *first=share->wordLinkHead;
+		free(temp);
+		//printf("done printing...\n");
+		//printf("done printing...\n");
+		//printf("here5\t%s\n",share->wordLinkHead->word);
+  }
+  printf("%s\n",share->wordLinkHead->next->word);
+  share->wordLinkHead->word="POEPOL";
+  share->eof=true;
+  printNowBiatch(share->wordLinkTail);
+  print_dict(share->firstDict);
+  pthread_exit(NULL);
+}
 
+void printNowBiatch(wordLink *first)
+{
+	while(first)
+	{
+		printf("word:\t%s-\t%i\n",first->word,&first->word);
+		first=first->prev;
+	}
+	printf("done printing...\n");
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/*void *consumer(void *arg)
+{
+	so_t *share=(so_t*)arg;
+	char *tempWord;
+	while(!share->eof)
+	{
+		wordLink temp;
+		insert_word(share->firstDict,tempWord);
+	}
+	pthread_exit(NULL);
+}*/
 
 
