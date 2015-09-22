@@ -16,7 +16,7 @@ typedef struct dict{//can either declare a new instance as dict_T name; OR struc
 
 typedef struct wordLink
 {
-	char* word;
+	char *word;
 	struct wordLink *next;
 	struct wordLink *prev
 } wordLink;
@@ -138,14 +138,10 @@ main( int argc, char *argv[] )
   so_t *share=malloc(sizeof(so_t));
   share->inFile=infile;
   share->flag=false;
-  printf("here1\n");
   share->wordLinkHead=malloc(sizeof(wordLink));
   share->wordLinkHead->next=NULL;
-  printf("here2\n");
   share->wordLinkHead->word=NULL;
-  printf("here3\n");
   share->wordLinkHead->prev=NULL;
-  printf("here4\n");
   share->wordLinkTail=share->wordLinkHead;
   share->firstDict=malloc(sizeof(dict_t));
   share->firstDict->word=NULL;
@@ -167,36 +163,43 @@ void *producer(void * arg)//stores word in shared obj
 	so_t *share=(so_t *)arg;
 	char wordbuf[MAXWORD];
 	int cnt=0;
-	wordLink *temp=malloc(sizeof(wordLink));
+	
 	while(get_word( wordbuf, MAXWORD, share->inFile ) ) 
   {
-  	realloc(temp);
-		//printf("tempLoc-%i\n",&temp->word);
+  	wordLink *temp=malloc(temp,sizeof(wordLink));
+  	
+		printf("temp loc-\t%i\n",&temp);
 		temp->word=wordbuf;
-		temp->next=share->wordLinkHead;
+		temp->next=&share->wordLinkHead;
 		temp->prev=NULL;
-		share->wordLinkHead->prev=temp;
+		share->wordLinkHead->prev=&temp;
 		share->wordLinkHead = temp;
-		wordLink *first=share->wordLinkHead;
-		free(temp);
+		//wordLink *first=share->wordLinkHead;
+		//printf("here1\n");
+		//free(temp);
+		//printf("here2\n");
 		//printf("done printing...\n");
 		//printf("done printing...\n");
-		//printf("here5\t%s\n",share->wordLinkHead->word);
+		printNowBiatch(share->wordLinkTail);
+		
+		//printf("here5\t%s\tthen\t%s\n",share->wordLinkHead->word,share->wordLinkHead->next->word);
   }
-  printf("%s\n",share->wordLinkHead->next->word);
+  //printf("here3\n");
+  //printf("%s\n",share->wordLinkHead->word);
+  //printf("here4\n");
   share->wordLinkHead->word="POEPOL";
   share->eof=true;
-  printNowBiatch(share->wordLinkTail);
+  
   print_dict(share->firstDict);
   pthread_exit(NULL);
 }
 
-void printNowBiatch(wordLink *first)
+void printNowBiatch(wordLink *last)
 {
-	while(first)
+	while(last)
 	{
-		printf("word:\t%s-\t%i\n",first->word,&first->word);
-		first=first->prev;
+		printf("word:\t%s-\t%i\n",last->word,&last);
+		last=last->prev;
 	}
 	printf("done printing...\n");
 }
